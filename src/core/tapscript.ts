@@ -1,3 +1,4 @@
+import * as bip68 from "bip68";
 import * as btc from "@scure/btc-signer";
 import { TAP_LEAF_VERSION } from "@scure/btc-signer/payment";
 import { Bytes } from "@scure/btc-signer/utils";
@@ -5,7 +6,7 @@ import { Bytes } from "@scure/btc-signer/utils";
 export interface DefaultTapscriptOptions {
     pubKey: Bytes;
     serverPubKey: Bytes;
-    csvTimelock?: number;
+    csvTimelock?: RelativeTimelock;
 }
 
 export enum TapLeafPath {
@@ -13,14 +14,25 @@ export enum TapLeafPath {
     EXIT = 1, // CSV timelock path
 }
 
+export type RelativeTimelock = {
+    value: bigint;
+    type: "seconds" | "blocks";
+};
+
 export class VtxoTapscript {
-    static readonly DEFAULT_TIMELOCK = 144; // 1 day in blocks
+    static readonly DEFAULT_TIMELOCK: RelativeTimelock = {
+        value: 144n,
+        type: "blocks",
+    }; // 1 day in blocks
     // TODO change to 3 months in blocks
-    static readonly BOARDING_TIMELOCK = VtxoTapscript.DEFAULT_TIMELOCK * 2;
+    static readonly BOARDING_TIMELOCK: RelativeTimelock = {
+        value: this.DEFAULT_TIMELOCK.value * 2n,
+        type: this.DEFAULT_TIMELOCK.type,
+    };
 
     readonly pubKey: Bytes;
     readonly serverPubKey: Bytes;
-    readonly csvTimelock: number;
+    readonly csvTimelock: RelativeTimelock;
     private readonly p2tr: ReturnType<typeof btc.p2tr>;
     private readonly forfeitScript: Uint8Array;
     private readonly exitScript: Uint8Array;
@@ -39,21 +51,16 @@ export class VtxoTapscript {
         this.csvTimelock = csvTimelock;
 
         // Create taproot tree with 2-of-2 multisig (forfeit path)
-        // The following alterantive doents work
-        // btc.Script.encode([this.pubKey,btc.OP.CHECKSIGVERIFY,this.serverPubKey,btc.OP.CHECKSIG])
         this.forfeitScript = btc.p2tr_ms(2, [
             this.pubKey,
             this.serverPubKey,
         ]).script;
 
         // Create CSV timelock script (exit path)
-        this.exitScript = btc.Script.encode([
+        this.exitScript = checkSequenceVerifyScript(
             this.csvTimelock,
-            btc.OP.CHECKSEQUENCEVERIFY,
-            btc.OP.DROP,
-            this.pubKey,
-            btc.OP.CHECKSIG,
-        ]);
+            this.pubKey
+        );
 
         // Create taproot tree
         const tapTree = btc.taprootListToTree([
@@ -119,4 +126,33 @@ export class VtxoTapscript {
             network
         );
     }
+}
+
+export function checkSequenceVerifyScript(
+    timelock: RelativeTimelock,
+    pubkey: Bytes
+): Uint8Array {
+    if (pubkey.length !== 32) {
+        throw new Error("Invalid pubkey length");
+    }
+
+    const sequence = btc
+        .ScriptNum()
+        .encode(
+            BigInt(
+                bip68.encode(
+                    timelock.type === "blocks"
+                        ? { blocks: Number(timelock.value) }
+                        : { seconds: Number(timelock.value) }
+                )
+            )
+        );
+
+    return btc.Script.encode([
+        sequence,
+        "CHECKSEQUENCEVERIFY",
+        "DROP",
+        pubkey,
+        "CHECKSIG",
+    ]);
 }
