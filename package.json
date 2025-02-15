@@ -2,15 +2,15 @@
   "name": "@arklabs/wallet-sdk",
   "version": "0.0.6",
   "description": "Bitcoin wallet SDK with Taproot and Ark integration",
-  "type": "module",
   "main": "./dist/cjs/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js",
-      "types": "./dist/index.d.ts"
+      "default": "./dist/esm/index.js"
     }
   },
   "files": [
@@ -21,7 +21,10 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc && tsc -p tsconfig.cjs.json",
+    "build": "rm -rf dist && pnpm run build:esm && pnpm run build:cjs && pnpm run build:types",
+    "build:esm": "tsc -p tsconfig.json --outDir dist/esm --module ES2020",
+    "build:cjs": "tsc -p tsconfig.json --outDir dist/cjs --module CommonJS",
+    "build:types": "tsc -p tsconfig.json --outDir dist/types --emitDeclarationOnly",
     "test": "vitest run",
     "test:unit": "vitest run --exclude test/integration.test.ts",
     "test:setup": "node test/setup.js",
