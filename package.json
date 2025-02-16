@@ -25,7 +25,11 @@
     "test": "vitest run",
     "test:unit": "vitest run --exclude test/integration.test.ts",
     "test:setup": "node test/setup.js",
+    "test:setup-master": "node test/setup.js master",
+    "test:up-master": "docker compose -f docker-compose.yml up -d --build",
+    "test:down-master": "docker compose -f docker-compose.yml down",
     "test:integration": "vitest run test/integration.test.ts",
+    "test:integration-master": "ARK_ENV=master vitest run test/integration.test.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint \"src/**/*.ts\"",
@@ -41,10 +45,13 @@
     "precommit": "lint-staged"
   },
   "dependencies": {
+    "@brandonblack/musig": "github:reardencode/musig-js",
     "@noble/curves": "1.7.0",
     "@noble/hashes": "1.6.1",
+    "@noble/secp256k1": "2.2.3",
     "@scure/base": "1.2.1",
-    "@scure/btc-signer": "1.5.0"
+    "@scure/btc-signer": "1.5.0",
+    "bip68": "1.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

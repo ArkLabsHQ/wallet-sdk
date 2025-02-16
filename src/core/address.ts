@@ -1,6 +1,7 @@
-import { bech32m } from "@scure/base";
-import { Bytes } from "@scure/btc-signer/utils";
+import { bech32m, hex } from "@scure/base";
+import { Bytes, TAPROOT_UNSPENDABLE_KEY } from "@scure/btc-signer/utils";
 import { networks } from "../types/networks";
+import { p2tr, Script, taprootListToTree } from "@scure/btc-signer";
 
 /**
  * ArkAddress is a bech32m encoded address with a custom HRP (ark/tark)
@@ -52,6 +53,20 @@ export class ArkAddress {
         this.tweakedPubKey = new Uint8Array(tweakedPubKey);
     }
 
+    static fromTapscripts(
+        serverPubKey: Bytes,
+        tapscripts: string[],
+        network?: typeof networks.bitcoin
+    ): ArkAddress {
+        const tapTree = taprootListToTree(
+            tapscripts.map((script) => ({ script: hex.decode(script) }))
+        );
+
+        const payment = p2tr(TAPROOT_UNSPENDABLE_KEY, tapTree, undefined, true);
+
+        return new ArkAddress(serverPubKey, payment.tweakedPubkey, network);
+    }
+
     static decode(address: string): ArkAddress {
         // @ts-expect-error - bech32m addresses are properly formatted
         const decoded = bech32m.decode(address, 1023);
@@ -94,5 +109,9 @@ export class ArkAddress {
         // Convert to 5-bit words and encode
         const words = bech32m.toWords(data);
         return bech32m.encode(this.hrp, words, 1023);
+    }
+
+    get script(): Bytes {
+        return Script.encode(["OP_1", this.tweakedPubKey]);
     }
 }

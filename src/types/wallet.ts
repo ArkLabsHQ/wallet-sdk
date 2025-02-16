@@ -1,3 +1,4 @@
+import { Output, SettlementEvent, VtxoInput } from "../providers/base";
 import type { NetworkName } from "./networks";
 
 export interface Identity {
@@ -36,9 +37,31 @@ export interface SendBitcoinParams {
     memo?: string;
 }
 
+export interface Recipient {
+    address: string;
+    amount: number;
+}
+
+export type ForfeitVtxoInput = VtxoInput & {
+    forfeitScript: string;
+};
+
+export interface SettleParams {
+    inputs: (string | ForfeitVtxoInput)[];
+    outputs: Output[];
+}
+
+export interface OffchainInfo {
+    address: string;
+    scripts: {
+        exit: string[];
+        forfeit: string[];
+    };
+}
+
 export interface AddressInfo {
     onchain: string;
-    offchain?: string;
+    offchain?: OffchainInfo;
     boarding?: string;
     bip21: string;
 }
@@ -61,9 +84,12 @@ export interface VirtualStatus {
     batchExpiry?: number;
 }
 
-export interface Coin {
+export interface Outpoint {
     txid: string;
     vout: number;
+}
+
+export interface Coin extends Outpoint {
     value: number;
     status: Status;
 }
@@ -79,6 +105,10 @@ export interface Wallet {
     getVirtualCoins(): Promise<VirtualCoin[]>;
     sendBitcoin(params: SendBitcoinParams, zeroFee?: boolean): Promise<string>;
     sendOnchain(params: SendBitcoinParams): Promise<string>;
+    settle(
+        params: SettleParams,
+        eventCallback?: (event: SettlementEvent) => void
+    ): Promise<string>;
     // TODO: remove zeroFee with transaction v3
     sendOffchain(params: SendBitcoinParams, zeroFee?: boolean): Promise<string>;
     signMessage(message: string): Promise<string>;

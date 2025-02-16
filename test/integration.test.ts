@@ -4,19 +4,21 @@ import { utils } from '@scure/btc-signer'
 import { hex } from '@scure/base'
 import { execSync } from 'child_process'
 
+const arkdExec = process.env.ARK_ENV === 'master' ? 'docker exec -t arkd' : 'nigiri'
+
 describe('Wallet SDK Integration Tests', () => {
   // Generate random keys for all participants
   const alicePrivateKeyBytes = utils.randomPrivateKeyBytes()
   const bobPrivateKeyBytes = utils.randomPrivateKeyBytes()
   const carolPrivateKeyBytes = utils.randomPrivateKeyBytes()
   const davePrivateKeyBytes = utils.randomPrivateKeyBytes()
-
+  const frankPrivateKeyBytes = utils.randomPrivateKeyBytes()
   // Convert to hex strings for future reference
   const alicePrivateKeyHex = hex.encode(alicePrivateKeyBytes)
   const bobPrivateKeyHex = hex.encode(bobPrivateKeyBytes)
   const carolPrivateKeyHex = hex.encode(carolPrivateKeyBytes)
   const davePrivateKeyHex = hex.encode(davePrivateKeyBytes)
-
+  const frankPrivateKeyHex = hex.encode(frankPrivateKeyBytes)
   // Deterministic server public key from mnemonic "abandon" x24
   const ARK_SERVER_PUBKEY = '038a9bbb1fb2aa92b9557dd0b39a85f31d204f58b41c62ea112d6ad148a9881285'
   const ARK_SERVER_XONLY_PUBKEY = ARK_SERVER_PUBKEY.slice(2) // Remove '03' prefix
@@ -27,10 +29,11 @@ describe('Wallet SDK Integration Tests', () => {
   // Offchain wallets (Carol and Dave)
   let carolWallet: Wallet
   let daveWallet: Wallet
+  let frankWallet: Wallet
 
   beforeAll(async () => {
     // Check if there's enough offchain balance before proceeding
-    const balanceOutput = execSync('nigiri ark balance').toString()
+    const balanceOutput = execSync(`${arkdExec} ark balance`).toString()
     const balance = JSON.parse(balanceOutput)
     const offchainBalance = balance.offchain_balance.total
 
@@ -55,6 +58,7 @@ describe('Wallet SDK Integration Tests', () => {
     // Initialize offchain wallets (Carol and Dave)
     const carolIdentity = InMemoryKey.fromHex(carolPrivateKeyHex)
     const daveIdentity = InMemoryKey.fromHex(davePrivateKeyHex)
+    const frankIdentity = InMemoryKey.fromHex(frankPrivateKeyHex)
 
     carolWallet = new Wallet({
       network: 'regtest',
@@ -69,6 +73,38 @@ describe('Wallet SDK Integration Tests', () => {
       arkServerUrl: 'http://localhost:7070',
       arkServerPublicKey: ARK_SERVER_XONLY_PUBKEY
     })
+
+    frankWallet = new Wallet({
+      network: 'regtest',
+      identity: frankIdentity,
+      arkServerUrl: 'http://localhost:7070',
+      arkServerPublicKey: ARK_SERVER_XONLY_PUBKEY
+    })
+  })
+
+  it('should settle a VTXO', { timeout: 60000}, async () => {
+    const frankOffchainAddress = frankWallet.getAddress().offchain?.address
+    const fundAmount = 1000 
+    execSync(`${arkdExec} ark send --to ${frankOffchainAddress} --amount ${fundAmount} --password secret`)
+
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    const virtualCoins = await frankWallet.getForfeitVtxoInputs()
+    expect(virtualCoins).toHaveLength(1)
+    const vtxo = virtualCoins[0]
+    expect(vtxo.outpoint.txid).toBeDefined()
+
+    const settleTxid = await frankWallet.settle({
+      inputs: [vtxo],
+      outputs: [{
+        address: frankOffchainAddress!,
+        amount: BigInt(fundAmount)
+      }]
+    })
+
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    expect(settleTxid).toBeDefined()
   })
 
   it('should perform a complete onchain roundtrip payment', { timeout: 30000 }, async () => {
@@ -115,8 +151,8 @@ describe('Wallet SDK Integration Tests', () => {
 
   it('should perform a complete offchain roundtrip payment', { timeout: 60000 }, async () => {
     // Get addresses
-    const carolOffchainAddress = carolWallet.getAddress().offchain
-    const daveOffchainAddress = daveWallet.getAddress().offchain
+    const carolOffchainAddress = carolWallet.getAddress().offchain?.address
+    const daveOffchainAddress = daveWallet.getAddress().offchain?.address
     expect(carolOffchainAddress).toBeDefined()
     expect(daveOffchainAddress).toBeDefined()
 
@@ -132,8 +168,7 @@ describe('Wallet SDK Integration Tests', () => {
 
     // Use a smaller amount for testing
     const fundAmount = 10000 
-    // Fund Carol's offchain address using nigiri ark send
-    const sendOutput = execSync(`nigiri ark send --to ${carolOffchainAddress} --amount ${fundAmount} --password secret`).toString()
+    execSync(`${arkdExec} ark send --to ${carolOffchainAddress} --amount ${fundAmount} --password secret`)
 
     await new Promise(resolve => setTimeout(resolve, 1000))
 
@@ -169,4 +204,6 @@ describe('Wallet SDK Integration Tests', () => {
     expect(daveFinalBalance.offchain.total).toBe(sendAmount)
     expect(carolFinalBalance.offchain.total).toBe(fundAmount - sendAmount - fee)
   })
+
+
 })

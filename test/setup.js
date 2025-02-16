@@ -2,6 +2,8 @@ import { promisify } from 'util'
 import { setTimeout } from 'timers'
 import { execSync, spawn } from 'child_process'
 
+let arkdExec = "nigiri "
+
 const sleep = promisify(setTimeout)
 
 async function execCommand(command) {
@@ -37,7 +39,7 @@ async function waitForArkServer(maxRetries = 30, retryDelay = 2000) {
 }
 
 async function checkWalletStatus() {
-  const statusOutput = execSync('nigiri arkd wallet status').toString()
+  const statusOutput = execSync(`${arkdExec} arkd wallet status`).toString()
   const initialized = statusOutput.includes('initialized: true')
   const unlocked = statusOutput.includes('unlocked: true')
   const synced = statusOutput.includes('synced: true')
@@ -57,27 +59,6 @@ async function waitForWalletReady(maxRetries = 30, retryDelay = 2000) {
   throw new Error('Wallet failed to be ready after maximum retries')
 }
 
-function waitForSettlement() {
-  return new Promise((resolve, reject) => {
-    const settle = spawn('nigiri', ['ark', 'settle', '--password', 'secret'])
-    
-    settle.stderr.on('data', (data) => {
-      console.error(`settle stderr: ${data}`)
-    })
-
-    settle.on('error', (error) => {
-      reject(error)
-    })
-
-    settle.on('close', (code) => {
-      if (code === 0) {
-        resolve()
-      } else {
-        reject(new Error(`settle process exited with code ${code}`))
-      }
-    })
-  })
-}
 
 async function setupArkServer() {
   try {
@@ -86,8 +67,8 @@ async function setupArkServer() {
 
     // Create and unlock arkd wallet with deterministic mnemonic
     const mnemonic = 'abandon '.repeat(23) + 'abandon'
-    await execCommand(`nigiri arkd wallet create --password secret --mnemonic "${mnemonic}"`)
-    await execCommand('nigiri arkd wallet unlock --password secret')
+    await execCommand(`${arkdExec} arkd wallet create --password secret --mnemonic "${mnemonic}"`)
+    await execCommand(`${arkdExec} arkd wallet unlock --password secret`)
     
     // Wait for wallet to be ready and synced
     await waitForWalletReady()
@@ -97,7 +78,7 @@ async function setupArkServer() {
     console.log('Ark Server Public Key:', serverInfo.pubkey)
     
     // Get arkd address and fund it with nigiri faucet
-    const arkdAddress = (await execCommand('nigiri arkd wallet address')).toString().trim()
+    const arkdAddress = (await execCommand(`${arkdExec} arkd wallet address`)).toString().trim()
     console.log('Funding arkd address:', arkdAddress)
     await execCommand(`nigiri faucet ${arkdAddress}`)
     
@@ -105,10 +86,10 @@ async function setupArkServer() {
     await sleep(5000)
     
     // Initialize ark client
-    await execCommand('nigiri ark init --server-url http://localhost:7070 --explorer http://chopsticks:3000 --password secret --network regtest')
+    await execCommand(`${arkdExec} ark init --server-url http://localhost:7070 --explorer http://chopsticks:3000 --password secret --network regtest`)
     
     // Get ark boarding address and fund it
-    const arkReceiveOutput = (await execCommand('nigiri ark receive')).toString()
+    const arkReceiveOutput = (await execCommand(`${arkdExec} ark receive`)).toString()
     const boardingAddress = JSON.parse(arkReceiveOutput).boarding_address
     console.log('Funding boarding address:', boardingAddress)
     await execCommand(`nigiri faucet ${boardingAddress}`)
@@ -117,7 +98,7 @@ async function setupArkServer() {
     await sleep(5000)
     
     // Settle the funds and wait for completion
-    await waitForSettlement()
+    await execCommand(`${arkdExec} ark settle --password secret`)
     console.log('Settlement completed successfully')
     
     console.log('Ark server and client setup completed successfully')
@@ -125,6 +106,13 @@ async function setupArkServer() {
     console.error('Error setting up Ark server:', error)
     throw error
   }
+}
+
+// get argument
+const arg = process.argv[2]
+
+if (arg === 'master') {
+  arkdExec = "docker exec -t arkd"
 }
 
 // Run setup

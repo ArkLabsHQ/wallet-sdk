@@ -51,15 +51,17 @@ jobs:
     - name: Run Nigiri
       uses: vulpemventures/nigiri-github-action@v1
       with:
-        use_ark: true
         use_liquid: false
         use_ln: false
 
+    - name: Run arkd master
+      run: pnpm run test:up-master 
+
     - name: Run setup script
-      run: pnpm test:setup
+      run: pnpm test:setup-master
 
     - name: Run integration tests
-      run: pnpm test:integration
+      run: pnpm test:integration-master
 
     - name: Check TypeScript compilation
       run: pnpm build 
