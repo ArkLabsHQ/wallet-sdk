@@ -98,7 +98,10 @@ export interface ArkInfo {
 
 export interface ArkProvider {
     getInfo(): Promise<ArkInfo>;
-    getVirtualCoins(address: string): Promise<VirtualCoin[]>;
+    getVirtualCoins(address: string): Promise<{
+        spendableVtxos: VirtualCoin[];
+        spentVtxos: VirtualCoin[];
+    }>;
     submitVirtualTx(psbtBase64: string): Promise<string>;
     subscribeToEvents(callback: (event: ArkEvent) => void): Promise<() => void>;
     registerInputsForNextRound(inputs: Input[]): Promise<{ requestId: string }>;
@@ -144,7 +147,10 @@ export class RestArkProvider implements ArkProvider {
         };
     }
 
-    async getVirtualCoins(address: string): Promise<VirtualCoin[]> {
+    async getVirtualCoins(address: string): Promise<{
+        spendableVtxos: VirtualCoin[];
+        spentVtxos: VirtualCoin[];
+    }> {
         const url = `${this.serverUrl}/v1/vtxos/${address}`;
         const response = await fetch(url);
         if (!response.ok) {
@@ -153,7 +159,7 @@ export class RestArkProvider implements ArkProvider {
         const data = await response.json();
 
         // Convert from server format to our internal VTXO format and only return spendable coins (settled or pending)
-        return [...(data.spendableVtxos || [])].map((vtxo) => ({
+        const convert = (vtxo: any): VirtualCoin => ({
             txid: vtxo.outpoint.txid,
             vout: vtxo.outpoint.vout,
             value: Number(vtxo.amount),
@@ -165,7 +171,14 @@ export class RestArkProvider implements ArkProvider {
                 batchTxID: vtxo.roundTxid,
                 batchExpiry: vtxo.expireAt ? Number(vtxo.expireAt) : undefined,
             },
-        }));
+            spentBy: vtxo.spentBy,
+            createdAt: new Date(vtxo.createdAt * 1000),
+        });
+
+        return {
+            spendableVtxos: [...(data.spendableVtxos || [])].map(convert),
+            spentVtxos: [...(data.spentVtxos || [])].map(convert),
+        };
     }
 
     async submitVirtualTx(psbtBase64: string): Promise<string> {

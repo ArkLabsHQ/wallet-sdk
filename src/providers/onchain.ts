@@ -9,10 +9,24 @@ export const ESPLORA_URL: Record<NetworkName, string> = {
     regtest: "http://localhost:3000",
 };
 
+export type ExplorerTransaction = {
+    txid: string;
+    vout: {
+        scriptpubkey_address: string;
+        value: bigint;
+    }[];
+    status: {
+        confirmed: boolean;
+        block_time: number;
+    };
+};
+
 export interface OnchainProvider {
     getCoins(address: string): Promise<Coin[]>;
     getFeeRate(): Promise<number>;
     broadcastTransaction(txHex: string): Promise<string>;
+    getTxOutspends(txid: string): Promise<{ spent: boolean; txid: string }[]>;
+    getTransactions(address: string): Promise<ExplorerTransaction[]>;
 }
 
 export class EsploraProvider implements OnchainProvider {
@@ -50,5 +64,27 @@ export class EsploraProvider implements OnchainProvider {
         }
 
         return response.text(); // Returns the txid
+    }
+
+    async getTxOutspends(
+        txid: string
+    ): Promise<{ spent: boolean; txid: string }[]> {
+        const response = await fetch(`${this.baseUrl}/tx/${txid}/outspends`);
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to get transaction outspends: ${error}`);
+        }
+
+        return response.json();
+    }
+
+    async getTransactions(address: string): Promise<ExplorerTransaction[]> {
+        const response = await fetch(`${this.baseUrl}/address/${address}/txs`);
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to get transactions: ${error}`);
+        }
+
+        return response.json();
     }
 }
