@@ -1,29 +1,29 @@
 {
-  "keyAggregation": {
-    "pubkeys": [
-      "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-      "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-    ],
-    "tweak": "a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2",
-    "expectedAggregatedKey": "3b46d262d2f610e9038b44beabdfe97ab5a0feb89870acc2264edfb7f63ec2ec",
-    "expectedFinalKey": "2a1cf6fb50d72dd88a07c9bdfebee1af15020a12e56b183e6e27f36344e052ff"
-  },
-  "signing": {
-    "inputs": {
-      "secNonce": "84da4cbbf0c9f0f0a577c3dafef022655043ef8311ba1577712f16091409c612b7d65cefb088331fa2af38812226c51af79bf9d50bddd7e98ab045e91b96fb6a02058cc9e83d140f5cb09f2523475427e201a219bc0b319582e53cb2c5a310821f",
-      "pubNonce": "032b8ef1c7f2e30f2e49f97b3037ba680b404ed6581b26e3c30a197fde4654f6fc02df45674465d4801f2159c8b176f1e49f633a9d14272a2e9737e3f09acdd64c48",
-      "secretKey": "7994c2775ae6330322f20479ec5b95db1116f9002d02d03aa5746d46b6412d48",
-      "aggNonce": "03eb8a60459fbb5dacc9e4c176b5f2f763ce1ca5cd5dec7c7ec2a6f6475963da4502eb4bf530ed89f17303e231e390355c5e78d01e458548f83ffcc7e92f7536b2bc",
-    "publicKeys": [
-      "02058cc9e83d140f5cb09f2523475427e201a219bc0b319582e53cb2c5a310821f",
-      "02a8a69d9668ff6b840140b592c304f3a0f19e904d34112e8088820d4d8f313ee6"
-    ],
-    "message": "c3f1a25092426880cc7d425576f989d1f31f34f42e155c96e7c364acd2716f08",
-    "options": {
-      "sortKeys": true,
-      "taprootTweak": "7d08f95a060a350c8dec789bdc032cded2a40c1a19e4ff3d814d592bd002b5f5"
-    }
+    "keyAggregation": {
+        "pubkeys": [
+            "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+            "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        "tweak": "a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2",
+        "expectedAggregatedKey": "3b46d262d2f610e9038b44beabdfe97ab5a0feb89870acc2264edfb7f63ec2ec",
+        "expectedFinalKey": "2a1cf6fb50d72dd88a07c9bdfebee1af15020a12e56b183e6e27f36344e052ff"
     },
-    "result": "4fdf7db444c5fdb3894d5f90de9dffcd9a4768358250998c6e337047c9dce68c"
-  }
+    "signing": {
+        "inputs": {
+            "secNonce": "84da4cbbf0c9f0f0a577c3dafef022655043ef8311ba1577712f16091409c612b7d65cefb088331fa2af38812226c51af79bf9d50bddd7e98ab045e91b96fb6a02058cc9e83d140f5cb09f2523475427e201a219bc0b319582e53cb2c5a310821f",
+            "pubNonce": "032b8ef1c7f2e30f2e49f97b3037ba680b404ed6581b26e3c30a197fde4654f6fc02df45674465d4801f2159c8b176f1e49f633a9d14272a2e9737e3f09acdd64c48",
+            "secretKey": "7994c2775ae6330322f20479ec5b95db1116f9002d02d03aa5746d46b6412d48",
+            "aggNonce": "03eb8a60459fbb5dacc9e4c176b5f2f763ce1ca5cd5dec7c7ec2a6f6475963da4502eb4bf530ed89f17303e231e390355c5e78d01e458548f83ffcc7e92f7536b2bc",
+            "publicKeys": [
+                "02058cc9e83d140f5cb09f2523475427e201a219bc0b319582e53cb2c5a310821f",
+                "02a8a69d9668ff6b840140b592c304f3a0f19e904d34112e8088820d4d8f313ee6"
+            ],
+            "message": "c3f1a25092426880cc7d425576f989d1f31f34f42e155c96e7c364acd2716f08",
+            "options": {
+                "sortKeys": true,
+                "taprootTweak": "7d08f95a060a350c8dec789bdc032cded2a40c1a19e4ff3d814d592bd002b5f5"
+            }
+        },
+        "result": "4fdf7db444c5fdb3894d5f90de9dffcd9a4768358250998c6e337047c9dce68c"
+    }
 }

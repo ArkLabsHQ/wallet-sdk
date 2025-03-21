@@ -8,6 +8,7 @@ export type NetworkName =
     | "regtest";
 
 export interface Network {
+    ark: string;
     bech32: string;
     pubKeyHash: number;
     scriptHash: number;
@@ -17,25 +18,25 @@ export const getNetwork = (network: NetworkName): Network => {
     return networks[network];
 };
 
-export const SIGHASH_ALL = 0x01;
-export const SIGHASH_NONE = 0x02;
-export const SIGHASH_SINGLE = 0x03;
-export const SIGHASH_ANYONECANPAY = 0x80;
-
-export const DEFAULT_SEQUENCE = 0xfffffffd; // Opt-in RBF
-export const DEFAULT_LOCKTIME = 0;
-
 export const networks = {
-    bitcoin: NETWORK,
-    testnet: TEST_NETWORK,
-    signet: TEST_NETWORK,
-    mutinynet: {
-        ...TEST_NETWORK,
-    },
-    regtest: {
-        ...TEST_NETWORK,
-        bech32: "bcrt",
-        pubKeyHash: 0x6f,
-        scriptHash: 0xc4,
-    },
+    bitcoin: withArkPrefix(NETWORK, "ark"),
+    testnet: withArkPrefix(TEST_NETWORK, "tark"),
+    signet: withArkPrefix(TEST_NETWORK, "tark"),
+    mutinynet: withArkPrefix(TEST_NETWORK, "tark"),
+    regtest: withArkPrefix(
+        {
+            ...TEST_NETWORK,
+            bech32: "bcrt",
+            pubKeyHash: 0x6f,
+            scriptHash: 0xc4,
+        },
+        "tark"
+    ),
 };
+
+function withArkPrefix(network: Omit<Network, "ark">, prefix: string): Network {
+    return {
+        ...network,
+        ark: prefix,
+    };
+}

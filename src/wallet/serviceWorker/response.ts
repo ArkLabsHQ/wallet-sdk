@@ -1,12 +1,13 @@
+import { TaprootLeaf } from "@scure/btc-signer/payment";
 import {
     WalletBalance,
     Coin,
-    SpendableVtxo,
     VirtualCoin,
     ArkTransaction,
     AddressInfo,
 } from "..";
 import { SettlementEvent } from "../../providers/ark";
+import { EncodedVtxoScript } from "../../script/base";
 
 export namespace Response {
     export type Type =
@@ -137,14 +138,16 @@ export namespace Response {
     export interface Vtxos extends Base {
         type: "VTXOS";
         success: true;
-        vtxos: (SpendableVtxo & VirtualCoin)[];
+        vtxos: (TaprootLeaf & EncodedVtxoScript & VirtualCoin)[];
     }
 
     export function isVtxos(response: Base): response is Vtxos {
         return response.type === "VTXOS" && response.success === true;
     }
 
-    export function vtxos(vtxos: (SpendableVtxo & VirtualCoin)[]): Vtxos {
+    export function vtxos(
+        vtxos: (TaprootLeaf & EncodedVtxoScript & VirtualCoin)[]
+    ): Vtxos {
         return {
             type: "VTXOS",
             success: true,
@@ -173,7 +176,7 @@ export namespace Response {
     export interface BoardingUtxos extends Base {
         type: "BOARDING_UTXOS";
         success: true;
-        boardingUtxos: (SpendableVtxo & Coin)[];
+        boardingUtxos: (TaprootLeaf & EncodedVtxoScript & Coin)[];
     }
 
     export function isBoardingUtxos(response: Base): response is BoardingUtxos {
@@ -181,7 +184,7 @@ export namespace Response {
     }
 
     export function boardingUtxos(
-        boardingUtxos: (SpendableVtxo & Coin)[]
+        boardingUtxos: (TaprootLeaf & EncodedVtxoScript & Coin)[]
     ): BoardingUtxos {
         return {
             type: "BOARDING_UTXOS",

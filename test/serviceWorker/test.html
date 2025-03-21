@@ -1,600 +1,692 @@
 <!-- test.html is a simple test page for the ServiceWorkerWallet implementation -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wallet SDK Service Worker Test</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
-            height: 100vh;
-            overflow: hidden;
-        }
-        .page-layout {
-            display: grid;
-            grid-template-columns: 1fr 400px;
-            height: 100vh;
-            overflow: hidden;
-        }
-        .main-content {
-            padding: 20px;
-            overflow-y: auto;
-            height: 100vh;
-            box-sizing: border-box;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding-bottom: 20px;
-        }
-        .log-panel {
-            background: #f8f9fa;
-            border-left: 1px solid #ddd;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            box-sizing: border-box;
-            overflow: hidden;
-        }
-        .log-panel h2 {
-            margin-top: 0;
-        }
-        .card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            background: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .status {
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
-        .success {
-            background-color: #e6f4ea;
-            color: #137333;
-        }
-        .error {
-            background-color: #fce8e6;
-            color: #c5221f;
-        }
-        .operation-result {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 15px;
-            margin-top: 10px;
-        }
-        .operation-result pre {
-            margin: 10px 0 0;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 4px;
-            overflow-x: auto;
-            font-size: 13px;
-        }
-        .operation-result .label {
-            font-weight: 600;
-            color: #1a73e8;
-            margin-bottom: 5px;
-        }
-        .operation-result.error {
-            border-color: #fad2cf;
-        }
-        button {
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin: 5px 0;
-        }
-        .log {
-            background: #f5f5f5;
-            padding: 10px;
-            border-radius: 4px;
-            font-family: monospace;
-            flex: 1;
-            overflow-y: auto;
-            margin-top: 10px;
-        }
-        .settlement-info {
-            margin-bottom: 15px;
-        }
-        .info-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .input-group {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .unit {
-            color: #666;
-        }
-        .coins-to-settle {
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 15px;
-        }
-        .coins-to-settle .label {
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        .coins-list {
-            max-height: 150px;
-            overflow-y: auto;
-        }
-        .coin-item {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 10px;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-        .coin-item:last-child {
-            margin-bottom: 0;
-        }
-        .coin-type {
-            font-weight: 600;
-            color: #1a73e8;
-            margin-bottom: 3px;
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        button.secondary {
-            background-color: #fff;
-            color: #1a73e8;
-            border: 1px solid #1a73e8;
-        }
-        button.secondary:hover {
-            background-color: #f8f9fa;
-        }
-        .settlement-progress {
-            margin-top: 10px;
-        }
-        .progress-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .progress-item:last-child {
-            border-bottom: none;
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #1a73e8;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        .loading-text {
-            color: #1a73e8;
-            font-weight: 500;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        body.loading button {
-            pointer-events: none;
-            opacity: 0.6;
-        }
-    </style>
-</head>
-<body>
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Initializing wallet service...</div>
-    </div>
-    <div class="page-layout">
-        <div class="main-content">
-            <div class="container">
-                <h1>Wallet SDK Service Worker Test</h1>
-                
-                <div class="card">
-                    <h2>Wallet Initialization</h2>
-                    <div>
-                        <label for="network">Network:</label>
-                        <select id="network">
-                            <option value="regtest">Regtest</option>
-                            <option value="testnet">Testnet</option>
-                            <option value="bitcoin">Bitcoin</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="privateKey">Private Key (hex):</label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="text" id="privateKey" placeholder="Enter private key in hex format" style="flex: 1;">
-                            <button id="generateKey">Generate Key</button>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Wallet SDK Service Worker Test</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                    Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                margin: 0;
+                padding: 0;
+                line-height: 1.6;
+                height: 100vh;
+                overflow: hidden;
+            }
+            .page-layout {
+                display: grid;
+                grid-template-columns: 1fr 400px;
+                height: 100vh;
+                overflow: hidden;
+            }
+            .main-content {
+                padding: 20px;
+                overflow-y: auto;
+                height: 100vh;
+                box-sizing: border-box;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding-bottom: 20px;
+            }
+            .log-panel {
+                background: #f8f9fa;
+                border-left: 1px solid #ddd;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                box-sizing: border-box;
+                overflow: hidden;
+            }
+            .log-panel h2 {
+                margin-top: 0;
+            }
+            .card {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 20px;
+                background: #fff;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .status {
+                padding: 10px;
+                border-radius: 4px;
+                margin-top: 10px;
+            }
+            .success {
+                background-color: #e6f4ea;
+                color: #137333;
+            }
+            .error {
+                background-color: #fce8e6;
+                color: #c5221f;
+            }
+            .operation-result {
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                padding: 15px;
+                margin-top: 10px;
+            }
+            .operation-result pre {
+                margin: 10px 0 0;
+                padding: 10px;
+                background: #f8f9fa;
+                border-radius: 4px;
+                overflow-x: auto;
+                font-size: 13px;
+            }
+            .operation-result .label {
+                font-weight: 600;
+                color: #1a73e8;
+                margin-bottom: 5px;
+            }
+            .operation-result.error {
+                border-color: #fad2cf;
+            }
+            button {
+                background-color: #1a73e8;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            button:disabled {
+                background-color: #ccc;
+                cursor: not-allowed;
+            }
+            input {
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin: 5px 0;
+            }
+            .log {
+                background: #f5f5f5;
+                padding: 10px;
+                border-radius: 4px;
+                font-family: monospace;
+                flex: 1;
+                overflow-y: auto;
+                margin-top: 10px;
+            }
+            .settlement-info {
+                margin-bottom: 15px;
+            }
+            .info-row {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            .input-group {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .unit {
+                color: #666;
+            }
+            .coins-to-settle {
+                background: #f8f9fa;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                padding: 15px;
+            }
+            .coins-to-settle .label {
+                font-weight: 600;
+                margin-bottom: 10px;
+            }
+            .coins-list {
+                max-height: 150px;
+                overflow-y: auto;
+            }
+            .coin-item {
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                padding: 10px;
+                margin-bottom: 8px;
+                font-size: 13px;
+            }
+            .coin-item:last-child {
+                margin-bottom: 0;
+            }
+            .coin-type {
+                font-weight: 600;
+                color: #1a73e8;
+                margin-bottom: 3px;
+            }
+            .button-group {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 10px;
+            }
+            button.secondary {
+                background-color: #fff;
+                color: #1a73e8;
+                border: 1px solid #1a73e8;
+            }
+            button.secondary:hover {
+                background-color: #f8f9fa;
+            }
+            .settlement-progress {
+                margin-top: 10px;
+            }
+            .progress-item {
+                display: flex;
+                justify-content: space-between;
+                padding: 5px 0;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            .progress-item:last-child {
+                border-bottom: none;
+            }
+            .loading-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(255, 255, 255, 0.9);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            .loading-spinner {
+                width: 50px;
+                height: 50px;
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #1a73e8;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-bottom: 20px;
+            }
+            .loading-text {
+                color: #1a73e8;
+                font-weight: 500;
+            }
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+            body.loading button {
+                pointer-events: none;
+                opacity: 0.6;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Initializing wallet service...</div>
+        </div>
+        <div class="page-layout">
+            <div class="main-content">
+                <div class="container">
+                    <h1>Wallet SDK Service Worker Test</h1>
+
+                    <div class="card">
+                        <h2>Wallet Initialization</h2>
+                        <div>
+                            <label for="network">Network:</label>
+                            <select id="network">
+                                <option value="regtest">Regtest</option>
+                                <option value="testnet">Testnet</option>
+                                <option value="bitcoin">Bitcoin</option>
+                            </select>
                         </div>
+                        <div>
+                            <label for="privateKey">Private Key (hex):</label>
+                            <div
+                                style="
+                                    display: flex;
+                                    gap: 10px;
+                                    align-items: center;
+                                "
+                            >
+                                <input
+                                    type="text"
+                                    id="privateKey"
+                                    placeholder="Enter private key in hex format"
+                                    style="flex: 1"
+                                />
+                                <button id="generateKey">Generate Key</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="arkServerUrl">ARK Server URL:</label>
+                            <input
+                                type="text"
+                                id="arkServerUrl"
+                                placeholder="Enter ARK server URL"
+                                value="http://localhost:7070"
+                            />
+                        </div>
+                        <button id="initWallet">Initialize Wallet</button>
+                        <div id="initStatus" class="status"></div>
                     </div>
-                    <div>
-                        <label for="arkServerUrl">ARK Server URL:</label>
-                        <input type="text" id="arkServerUrl" placeholder="Enter ARK server URL" value="http://localhost:7070">
-                    </div>
-                    <button id="initWallet">Initialize Wallet</button>
-                    <div id="initStatus" class="status"></div>
-                </div>
 
-                <div class="card">
-                    <h2>Wallet Operations</h2>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <button id="getAddress">Get Address</button>
-                        <button id="getBalance">Get Balance</button>
-                        <button id="getCoins">Get Coins</button>
-                        <button id="getVtxos">Get VTXOs</button>
-                        <button id="getBoardingUtxos">Get Boarding UTXOs</button>
-                        <button id="getHistory">Get History</button>
+                    <div class="card">
+                        <h2>Wallet Operations</h2>
+                        <div
+                            style="
+                                display: flex;
+                                gap: 10px;
+                                margin-bottom: 10px;
+                            "
+                        >
+                            <button id="getAddress">Get Address</button>
+                            <button id="getBalance">Get Balance</button>
+                            <button id="getCoins">Get Coins</button>
+                            <button id="getVtxos">Get VTXOs</button>
+                            <button id="getBoardingUtxos">
+                                Get Boarding UTXOs
+                            </button>
+                            <button id="getHistory">Get History</button>
+                        </div>
+                        <div id="operationStatus" class="status"></div>
                     </div>
-                    <div id="operationStatus" class="status"></div>
-                </div>
 
-                <div class="card">
-                    <h2>Settlement</h2>
-                    <button id="settle">Settle All Coins</button>
-                    <div id="settleStatus" class="status"></div>
+                    <div class="card">
+                        <h2>Settlement</h2>
+                        <button id="settle">Settle All Coins</button>
+                        <div id="settleStatus" class="status"></div>
+                    </div>
                 </div>
+            </div>
+
+            <div class="log-panel">
+                <h2>Event Log</h2>
+                <div id="log" class="log"></div>
             </div>
         </div>
 
-        <div class="log-panel">
-            <h2>Event Log</h2>
-            <div id="log" class="log"></div>
-        </div>
-    </div>
+        <script type="module">
+            import { ServiceWorkerWallet } from "/dist/browser/index.js";
 
-    <script type="module">
-        import { ServiceWorkerWallet } from '/dist/browser/index.js';
+            let wallet;
 
-        let wallet;
-        
-        function setLoading(isLoading) {
-            const overlay = document.getElementById('loadingOverlay');
-            document.body.classList.toggle('loading', isLoading);
-            if (isLoading) {
-                overlay.style.display = 'flex';
-            } else {
-                overlay.style.display = 'none';
-            }
-        }
-
-        async function initialize() {
-            setLoading(true);
-            try {
-                wallet = await ServiceWorkerWallet.create('/sw.js');
-                appendLog('Service worker wallet created successfully');
-            } catch (error) {
-                console.error('Error creating wallet:', error);
-                appendLog(`Failed to create service worker wallet: ${error.message}`);
-                updateStatus(initStatus, `Error creating wallet service: ${error.message}`, true);
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            initialize();
-        });
-
-        const log = document.getElementById('log');
-        const initStatus = document.getElementById('initStatus');
-        const operationStatus = document.getElementById('operationStatus');
-        const settleStatus = document.getElementById('settleStatus');
-
-        function appendLog(message) {
-            const entry = document.createElement('div');
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            log.appendChild(entry);
-            log.scrollTop = log.scrollHeight;
-        }
-
-        function updateStatus(element, message, isError = false) {
-            element.textContent = message;
-            element.className = `status ${isError ? 'error' : 'success'}`;
-            appendLog(message);
-        }
-
-        // Generate Private Key
-        document.getElementById('generateKey').addEventListener('click', () => {
-            const array = new Uint8Array(32);
-            crypto.getRandomValues(array);
-            const privateKey = Array.from(array)
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
-            document.getElementById('privateKey').value = privateKey;
-            appendLog('Generated new private key');
-        });
-
-        // Initialize Wallet
-        document.getElementById('initWallet').addEventListener('click', async () => {
-            const network = document.getElementById('network').value;
-            const privateKey = document.getElementById('privateKey').value;
-
-            if (!privateKey) {
-                updateStatus(initStatus, 'Error: Please enter a private key', true);
-                return;
+            function setLoading(isLoading) {
+                const overlay = document.getElementById("loadingOverlay");
+                document.body.classList.toggle("loading", isLoading);
+                if (isLoading) {
+                    overlay.style.display = "flex";
+                } else {
+                    overlay.style.display = "none";
+                }
             }
 
-            try {
-                const config = {
-                    network,
-                    privateKey,
-                    arkServerUrl: document.getElementById('arkServerUrl').value
-                };
-
-                appendLog('Creating wallet with config: ' + JSON.stringify({
-                    network: config.network,
-                    arkServerUrl: config.arkServerUrl
-                }));
-
-                await wallet.init(config);
-                appendLog("Wallet created and initialized successfully");
-                
-                updateStatus(initStatus, 'Wallet initialized successfully');
-            } catch (error) {
-                console.error('Wallet initialization error:', error);
-                updateStatus(initStatus, `Error initializing wallet: ${error.message}`, true);
+            async function initialize() {
+                setLoading(true);
+                try {
+                    wallet = await ServiceWorkerWallet.create("/sw.js");
+                    appendLog("Service worker wallet created successfully");
+                } catch (error) {
+                    console.error("Error creating wallet:", error);
+                    appendLog(
+                        `Failed to create service worker wallet: ${error.message}`
+                    );
+                    updateStatus(
+                        initStatus,
+                        `Error creating wallet service: ${error.message}`,
+                        true
+                    );
+                } finally {
+                    setLoading(false);
+                }
             }
-        });
 
-        // Helper function to check wallet state
-        function checkWalletState() {
-            if (!wallet) {
-                updateStatus(operationStatus, 'Error: Wallet not initialized (wallet instance is null)', true);
-                return false;
+            document.addEventListener("DOMContentLoaded", () => {
+                initialize();
+            });
+
+            const log = document.getElementById("log");
+            const initStatus = document.getElementById("initStatus");
+            const operationStatus = document.getElementById("operationStatus");
+            const settleStatus = document.getElementById("settleStatus");
+
+            function appendLog(message) {
+                const entry = document.createElement("div");
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                log.appendChild(entry);
+                log.scrollTop = log.scrollHeight;
             }
-            return true;
-        }
 
-        // Get Address
-        document.getElementById('getAddress').addEventListener('click', async () => {
-            if (!checkWalletState()) return;
+            function updateStatus(element, message, isError = false) {
+                element.textContent = message;
+                element.className = `status ${isError ? "error" : "success"}`;
+                appendLog(message);
+            }
 
-            try {
-                const address = await wallet.getAddress();
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result';
-                resultDiv.innerHTML = `
+            // Generate Private Key
+            document
+                .getElementById("generateKey")
+                .addEventListener("click", () => {
+                    const array = new Uint8Array(32);
+                    crypto.getRandomValues(array);
+                    const privateKey = Array.from(array)
+                        .map((b) => b.toString(16).padStart(2, "0"))
+                        .join("");
+                    document.getElementById("privateKey").value = privateKey;
+                    appendLog("Generated new private key");
+                });
+
+            // Initialize Wallet
+            document
+                .getElementById("initWallet")
+                .addEventListener("click", async () => {
+                    const network = document.getElementById("network").value;
+                    const privateKey =
+                        document.getElementById("privateKey").value;
+
+                    if (!privateKey) {
+                        updateStatus(
+                            initStatus,
+                            "Error: Please enter a private key",
+                            true
+                        );
+                        return;
+                    }
+
+                    try {
+                        const config = {
+                            network,
+                            privateKey,
+                            arkServerUrl:
+                                document.getElementById("arkServerUrl").value,
+                        };
+
+                        appendLog(
+                            "Creating wallet with config: " +
+                                JSON.stringify({
+                                    network: config.network,
+                                    arkServerUrl: config.arkServerUrl,
+                                })
+                        );
+
+                        await wallet.init(config);
+                        appendLog(
+                            "Wallet created and initialized successfully"
+                        );
+
+                        updateStatus(
+                            initStatus,
+                            "Wallet initialized successfully"
+                        );
+                    } catch (error) {
+                        console.error("Wallet initialization error:", error);
+                        updateStatus(
+                            initStatus,
+                            `Error initializing wallet: ${error.message}`,
+                            true
+                        );
+                    }
+                });
+
+            // Helper function to check wallet state
+            function checkWalletState() {
+                if (!wallet) {
+                    updateStatus(
+                        operationStatus,
+                        "Error: Wallet not initialized (wallet instance is null)",
+                        true
+                    );
+                    return false;
+                }
+                return true;
+            }
+
+            // Get Address
+            document
+                .getElementById("getAddress")
+                .addEventListener("click", async () => {
+                    if (!checkWalletState()) return;
+
+                    try {
+                        const address = await wallet.getAddress();
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result";
+                        resultDiv.innerHTML = `
                     <div class="label">Wallet Address</div>
                     <pre>${JSON.stringify(address, null, 2)}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog('Successfully retrieved wallet address');
-            } catch (error) {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result error';
-                resultDiv.innerHTML = `
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog("Successfully retrieved wallet address");
+                    } catch (error) {
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result error";
+                        resultDiv.innerHTML = `
                     <div class="label">Error Getting Address</div>
                     <pre>${error.message}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog(`Error getting address: ${error.message}`);
-            }
-        });
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog(`Error getting address: ${error.message}`);
+                    }
+                });
 
-        // Get Balance
-        document.getElementById('getBalance').addEventListener('click', async () => {
-            if (!checkWalletState()) return;
+            // Get Balance
+            document
+                .getElementById("getBalance")
+                .addEventListener("click", async () => {
+                    if (!checkWalletState()) return;
 
-            try {
-                const balance = await wallet.getBalance();
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result';
-                resultDiv.innerHTML = `
+                    try {
+                        const balance = await wallet.getBalance();
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result";
+                        resultDiv.innerHTML = `
                     <div class="label">Wallet Balance</div>
                     <pre>${JSON.stringify(balance, null, 2)}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog('Successfully retrieved wallet balance');
-            } catch (error) {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result error';
-                resultDiv.innerHTML = `
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog("Successfully retrieved wallet balance");
+                    } catch (error) {
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result error";
+                        resultDiv.innerHTML = `
                     <div class="label">Error Getting Balance</div>
                     <pre>${error.message}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog(`Error getting balance: ${error.message}`);
-            }
-        });
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog(`Error getting balance: ${error.message}`);
+                    }
+                });
 
-        // Get Coins
-        document.getElementById('getCoins').addEventListener('click', async () => {
-            if (!checkWalletState()) return;
+            // Get Coins
+            document
+                .getElementById("getCoins")
+                .addEventListener("click", async () => {
+                    if (!checkWalletState()) return;
 
-            try {
-                const coins = await wallet.getCoins();
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result';
-                resultDiv.innerHTML = `
+                    try {
+                        const coins = await wallet.getCoins();
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result";
+                        resultDiv.innerHTML = `
                     <div class="label">Wallet Coins</div>
                     <pre>${JSON.stringify(coins, null, 2)}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog('Successfully retrieved wallet coins');
-            } catch (error) {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result error';
-                resultDiv.innerHTML = `
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog("Successfully retrieved wallet coins");
+                    } catch (error) {
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result error";
+                        resultDiv.innerHTML = `
                     <div class="label">Error Getting Coins</div>
                     <pre>${error.message}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog(`Error getting coins: ${error.message}`);
-            }
-        });
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog(`Error getting coins: ${error.message}`);
+                    }
+                });
 
-        // Get VTXOs
-        document.getElementById('getVtxos').addEventListener('click', async () => {
-            if (!checkWalletState()) return;
+            // Get VTXOs
+            document
+                .getElementById("getVtxos")
+                .addEventListener("click", async () => {
+                    if (!checkWalletState()) return;
 
-            try {
-                const vtxos = await wallet.getVtxos();
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result';
-                resultDiv.innerHTML = `
+                    try {
+                        const vtxos = await wallet.getVtxos();
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result";
+                        resultDiv.innerHTML = `
                     <div class="label">Virtual Transaction Outputs (VTXOs)</div>
                     <pre>${JSON.stringify(vtxos, null, 2)}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog('Successfully retrieved VTXOs');
-            } catch (error) {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result error';
-                resultDiv.innerHTML = `
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog("Successfully retrieved VTXOs");
+                    } catch (error) {
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result error";
+                        resultDiv.innerHTML = `
                     <div class="label">Error Getting VTXOs</div>
                     <pre>${error.message}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog(`Error getting VTXOs: ${error.message}`);
-            }
-        });
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog(`Error getting VTXOs: ${error.message}`);
+                    }
+                });
 
-        // Get Boarding UTXOs
-        document.getElementById('getBoardingUtxos').addEventListener('click', async () => {
-            if (!checkWalletState()) return;
+            // Get Boarding UTXOs
+            document
+                .getElementById("getBoardingUtxos")
+                .addEventListener("click", async () => {
+                    if (!checkWalletState()) return;
 
-            try {
-                const boardingUtxos = await wallet.getBoardingUtxos();
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result';
-                resultDiv.innerHTML = `
+                    try {
+                        const boardingUtxos = await wallet.getBoardingUtxos();
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result";
+                        resultDiv.innerHTML = `
                     <div class="label">Boarding UTXOs</div>
                     <pre>${JSON.stringify(boardingUtxos, null, 2)}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog('Successfully retrieved boarding UTXOs');
-            } catch (error) {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result error';
-                resultDiv.innerHTML = `
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog("Successfully retrieved boarding UTXOs");
+                    } catch (error) {
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result error";
+                        resultDiv.innerHTML = `
                     <div class="label">Error Getting Boarding UTXOs</div>
                     <pre>${error.message}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog(`Error getting boarding UTXOs: ${error.message}`);
-            }
-        });
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog(
+                            `Error getting boarding UTXOs: ${error.message}`
+                        );
+                    }
+                });
 
-        // Get Transaction History
-        document.getElementById('getHistory').addEventListener('click', async () => {
-            if (!checkWalletState()) return;
+            // Get Transaction History
+            document
+                .getElementById("getHistory")
+                .addEventListener("click", async () => {
+                    if (!checkWalletState()) return;
 
-            try {
-                const history = await wallet.getTransactionHistory();
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result';
-                resultDiv.innerHTML = `
+                    try {
+                        const history = await wallet.getTransactionHistory();
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result";
+                        resultDiv.innerHTML = `
                     <div class="label">Transaction History</div>
                     <pre>${JSON.stringify(history, null, 2)}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog('Successfully retrieved transaction history');
-            } catch (error) {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'operation-result error';
-                resultDiv.innerHTML = `
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog("Successfully retrieved transaction history");
+                    } catch (error) {
+                        const resultDiv = document.createElement("div");
+                        resultDiv.className = "operation-result error";
+                        resultDiv.innerHTML = `
                     <div class="label">Error Getting Transaction History</div>
                     <pre>${error.message}</pre>
                 `;
-                operationStatus.innerHTML = '';
-                operationStatus.appendChild(resultDiv);
-                appendLog(`Error getting transaction history: ${error.message}`);
-            }
-        });
-
-        // Settle
-        document.getElementById('settle').addEventListener('click', async () => {
-            if (!checkWalletState()) return;
-
-            const settleButton = document.getElementById('settle');
-            settleButton.disabled = true;
-
-            try {
-                appendLog(`Starting settlement...`);
-                const txid = await wallet.settle(undefined, (event) => {
-                    // Log settlement events
-                    appendLog(`Settlement event: ${event.type}`);
-                    switch (event.type) {
-                        case "SigningStart":
-                            appendLog("Signing process started");
-                            break;
-                        case "SigningNoncesGenerated":
-                            appendLog("Signing nonces generated");
-                            break;
-                        case "Finalization":
-                            appendLog("Finalizing settlement");
-                            break;
-                        case "Finalized":
-                            appendLog(`Settlement finalized with round TXID: ${event.roundTxid}`);
-                            break;
-                        case "Failed":
-                            appendLog(`Settlement failed: ${event.reason}`);
-                            break;
+                        operationStatus.innerHTML = "";
+                        operationStatus.appendChild(resultDiv);
+                        appendLog(
+                            `Error getting transaction history: ${error.message}`
+                        );
                     }
                 });
-                updateStatus(settleStatus, `Settlement successful! Transaction ID: ${txid}`);
-                appendLog(`Settlement completed successfully. TXID: ${txid}`);
-            } catch (error) {
-                updateStatus(settleStatus, `Error during settlement: ${error.message}`, true);
-                appendLog(`Settlement error: ${error.message}`);
-            } finally {
-                settleButton.disabled = false;
-            }
-        });
-    </script>
-</body>
-</html> 
+
+            // Settle
+            document
+                .getElementById("settle")
+                .addEventListener("click", async () => {
+                    if (!checkWalletState()) return;
+
+                    const settleButton = document.getElementById("settle");
+                    settleButton.disabled = true;
+
+                    try {
+                        appendLog(`Starting settlement...`);
+                        const txid = await wallet.settle(undefined, (event) => {
+                            // Log settlement events
+                            appendLog(`Settlement event: ${event.type}`);
+                            switch (event.type) {
+                                case "SigningStart":
+                                    appendLog("Signing process started");
+                                    break;
+                                case "SigningNoncesGenerated":
+                                    appendLog("Signing nonces generated");
+                                    break;
+                                case "Finalization":
+                                    appendLog("Finalizing settlement");
+                                    break;
+                                case "Finalized":
+                                    appendLog(
+                                        `Settlement finalized with round TXID: ${event.roundTxid}`
+                                    );
+                                    break;
+                                case "Failed":
+                                    appendLog(
+                                        `Settlement failed: ${event.reason}`
+                                    );
+                                    break;
+                            }
+                        });
+                        updateStatus(
+                            settleStatus,
+                            `Settlement successful! Transaction ID: ${txid}`
+                        );
+                        appendLog(
+                            `Settlement completed successfully. TXID: ${txid}`
+                        );
+                    } catch (error) {
+                        updateStatus(
+                            settleStatus,
+                            `Error during settlement: ${error.message}`,
+                            true
+                        );
+                        appendLog(`Settlement error: ${error.message}`);
+                    } finally {
+                        settleButton.disabled = false;
+                    }
+                });
+        </script>
+    </body>
+</html>

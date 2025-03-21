@@ -7,9 +7,9 @@ interface ForfeitTxParams {
     vtxoAmount: bigint;
     connectorAmount: bigint;
     feeAmount: bigint;
-    vtxoScript: Uint8Array;
-    connectorScript: Uint8Array;
-    serverScript: Uint8Array;
+    vtxoPkScript: Uint8Array;
+    connectorPkScript: Uint8Array;
+    serverPkScript: Uint8Array;
     txLocktime?: number;
 }
 
@@ -19,9 +19,9 @@ export function buildForfeitTx({
     vtxoAmount,
     connectorAmount,
     feeAmount,
-    vtxoScript,
-    connectorScript,
-    serverScript,
+    vtxoPkScript,
+    connectorPkScript,
+    serverPkScript,
     txLocktime,
 }: ForfeitTxParams): Transaction {
     const tx = new Transaction({
@@ -34,7 +34,7 @@ export function buildForfeitTx({
         txid: connectorInput.txid,
         index: connectorInput.vout,
         witnessUtxo: {
-            script: connectorScript,
+            script: connectorPkScript,
             amount: connectorAmount,
         },
         sequence: 0xffffffff,
@@ -45,7 +45,7 @@ export function buildForfeitTx({
         txid: vtxoInput.txid,
         index: vtxoInput.vout,
         witnessUtxo: {
-            script: vtxoScript,
+            script: vtxoPkScript,
             amount: vtxoAmount,
         },
         sequence: txLocktime ? 0xfffffffe : 0xffffffff, // MAX_SEQUENCE - 1 if locktime is set
@@ -57,7 +57,7 @@ export function buildForfeitTx({
 
     // Add main output to server
     tx.addOutput({
-        script: serverScript,
+        script: serverPkScript,
         amount,
     });
 

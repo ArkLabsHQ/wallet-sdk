@@ -1,8 +1,18 @@
 import { InMemoryKey } from "./identity/inMemoryKey";
 import { Identity } from "./identity";
-import { ArkAddress } from "./address";
-import { VtxoTapscript } from "./tapscript";
-import { IWallet, WalletConfig, ArkTransaction, TxType } from "./wallet";
+import { ArkAddress } from "./script/address";
+import { VHTLC } from "./script/vhtlc";
+import { DefaultVtxo } from "./script/default";
+import { VtxoScript } from "./script/base";
+import {
+    IWallet,
+    WalletConfig,
+    ArkTransaction,
+    TxType,
+    Coin,
+    ExtendedCoin,
+    ExtendedVirtualCoin,
+} from "./wallet";
 import { Wallet } from "./wallet/wallet";
 import { ServiceWorkerWallet } from "./wallet/serviceWorker/wallet";
 import { Worker } from "./wallet/serviceWorker/worker";
@@ -19,6 +29,21 @@ import {
     RestArkProvider,
     ArkProvider,
 } from "./providers/ark";
+import {
+    ArkTapscript,
+    CLTVMultisigTapscript,
+    ConditionCSVMultisigTapscript,
+    ConditionMultisigTapscript,
+    CSVMultisigTapscript,
+    decodeTapscript,
+    MultisigTapscript,
+    TapscriptType,
+} from "./script/tapscript";
+import {
+    addConditionWitness,
+    CONDITION_WITNESS_KEY_PREFIX,
+    makeVirtualTx,
+} from "./utils/psbt";
 
 export type {
     WalletConfig,
@@ -29,6 +54,10 @@ export type {
     ArkProvider,
     Identity,
     ArkTransaction,
+    Coin,
+    ExtendedCoin,
+    ExtendedVirtualCoin,
+    ArkTapscript,
 };
 export {
     Wallet,
@@ -38,9 +67,21 @@ export {
     EsploraProvider,
     RestArkProvider,
     ArkAddress,
-    VtxoTapscript,
+    DefaultVtxo,
+    VtxoScript,
+    VHTLC,
     TxType,
     Worker,
     Request,
     Response,
+    decodeTapscript,
+    MultisigTapscript,
+    CSVMultisigTapscript,
+    ConditionCSVMultisigTapscript,
+    ConditionMultisigTapscript,
+    CLTVMultisigTapscript,
+    addConditionWitness,
+    CONDITION_WITNESS_KEY_PREFIX,
+    TapscriptType,
+    makeVirtualTx,
 };

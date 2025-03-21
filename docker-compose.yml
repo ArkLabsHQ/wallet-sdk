@@ -17,6 +17,7 @@ services:
       - ARK_NO_TLS=true
       - ARK_NO_MACAROONS=true
       - ARK_DATADIR=/app/data
+      - ARK_ALLOW_ZERO_FEES=true
     ports:
       - "7070:7070"
     volumes:

@@ -1,7 +1,9 @@
-import { Output, SettlementEvent, VtxoInput } from "../providers/ark";
+import { Output, SettlementEvent } from "../providers/ark";
 import { Identity } from "../identity";
 import { NetworkName } from "../networks";
-import { RelativeTimelock } from "../tapscript";
+import { RelativeTimelock } from "../script/tapscript";
+import { TaprootLeaf } from "@scure/btc-signer/payment";
+import { EncodedVtxoScript } from "../script/base";
 
 export interface WalletConfig {
     network: NetworkName;
@@ -39,13 +41,8 @@ export interface Recipient {
     amount: number;
 }
 
-// SpendableVtxo embed the forfeit script to use as spending path for the boarding utxo or vtxo
-export type SpendableVtxo = VtxoInput & {
-    forfeitScript: string;
-};
-
 export interface SettleParams {
-    inputs: (string | SpendableVtxo)[];
+    inputs: (string | (TaprootLeaf & Outpoint & EncodedVtxoScript))[];
     outputs: Output[];
 }
 
@@ -119,13 +116,17 @@ export interface ArkTransaction {
     createdAt: number;
 }
 
+// ExtendedCoin and ExtendedVirtualCoin contains the utxo/vtxo data along with the vtxo script locking it
+export type ExtendedCoin = TaprootLeaf & EncodedVtxoScript & Coin;
+export type ExtendedVirtualCoin = TaprootLeaf & EncodedVtxoScript & VirtualCoin;
+
 export interface IWallet {
     // Address and balance management
     getAddress(): Promise<AddressInfo>;
     getBalance(): Promise<WalletBalance>;
     getCoins(): Promise<Coin[]>;
-    getVtxos(): Promise<(SpendableVtxo & VirtualCoin)[]>;
-    getBoardingUtxos(): Promise<(SpendableVtxo & Coin)[]>;
+    getVtxos(): Promise<ExtendedVirtualCoin[]>;
+    getBoardingUtxos(): Promise<ExtendedCoin[]>;
     getTransactionHistory(): Promise<ArkTransaction[]>;
 
     // Transaction operations
