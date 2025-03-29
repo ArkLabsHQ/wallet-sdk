@@ -45,6 +45,7 @@ import {
     createVirtualTx,
 } from "./utils/psbt";
 import { ArkNote, ArkNoteData } from "./arknote";
+import { networks } from "./networks";
 
 export type {
     WalletConfig,
@@ -87,4 +88,5 @@ export {
     createVirtualTx,
     ArkNote,
     ArkNoteData,
+    networks,
 };
