@@ -65,13 +65,14 @@ export function createVirtualTx(
         Pick<VirtualCoin, "txid" | "vout" | "value">)[],
     outputs: Output[]
 ) {
-    let lockTime: number | undefined;
+    let lockTime = 0;
     for (const input of inputs) {
         const tapscript = decodeTapscript(
             scriptFromTapLeafScript(input.tapLeafScript)
         );
         if (CLTVMultisigTapscript.is(tapscript)) {
-            lockTime = Number(tapscript.params.absoluteTimelock);
+            const thisLockTime = Number(tapscript.params.absoluteTimelock);
+            if (thisLockTime > lockTime) lockTime = thisLockTime;
         }
     }
 
