@@ -601,6 +601,15 @@ export class Wallet implements IWallet {
         tx = await this.identity.sign(tx);
         const psbt = base64.encode(tx.toPSBT());
 
+        // TODO: implement new flow
+        // - user creates the virtual tx and the associated checkpoints
+        // - user signs the virtual tx
+        // - user sends signed virtual tx and unsigned checkpoints to server via SubmitOffchainTx
+        // - server validates the transaction and mark the input VTXOs as spent
+        // - server returns signed checkpoints and virtual tx to user
+        // - user counter-sign the checkpoints and call FinalizeOffchainTx RPC
+        // - server creates the new VTXO
+
         return this.arkProvider.submitVirtualTx(psbt);
     }
 
