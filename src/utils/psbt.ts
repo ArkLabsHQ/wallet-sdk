@@ -59,6 +59,45 @@ export function addConditionWitness(
         ],
     });
 }
+export function createCheckpointTx(
+    input: { tapLeafScript: TapLeafScript } & EncodedVtxoScript &
+        Pick<VirtualCoin, "txid" | "vout" | "value">
+) {
+    let lockTime = 0n;
+    const tapscript = decodeTapscript(
+        scriptFromTapLeafScript(input.tapLeafScript)
+    );
+    if (CLTVMultisigTapscript.is(tapscript)) {
+        const thisLockTime = tapscript.params.absoluteTimelock;
+        if (thisLockTime > lockTime) lockTime = thisLockTime;
+    }
+
+    const tx = new Transaction({
+        allowUnknown: true,
+        lockTime: Number(lockTime),
+    });
+
+    tx.addInput({
+        txid: input.txid,
+        index: input.vout,
+        sequence: lockTime ? DEFAULT_SEQUENCE - 1 : undefined,
+        witnessUtxo: {
+            script: VtxoScript.decode(input.scripts).pkScript,
+            amount: BigInt(input.value),
+        },
+        tapLeafScript: [input.tapLeafScript],
+    });
+
+    // add BIP371 encoded taproot tree to the unknown key field
+    addVtxoTaprootTree(0, tx, input.scripts.map(hex.decode));
+
+    tx.addOutput({
+        amount: BigInt(input.value),
+        script: VtxoScript.decode(input.scripts).pkScript,
+    });
+
+    return tx;
+}
 
 export function createVirtualTx(
     inputs: ({ tapLeafScript: TapLeafScript } & EncodedVtxoScript &
