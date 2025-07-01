@@ -7,7 +7,7 @@ function findVtxosSpentInSettlement(
     vtxos: VirtualCoin[],
     vtxo: VirtualCoin
 ): VirtualCoin[] {
-    if (vtxo.virtualStatus.state === "pending") {
+    if (vtxo.virtualStatus.state === "preconfirmed") {
         return [];
     }
 
@@ -39,7 +39,7 @@ function findVtxosResultedFromSpentBy(
 ): VirtualCoin[] {
     return vtxos.filter((v) => {
         if (
-            v.virtualStatus.state !== "pending" &&
+            v.virtualStatus.state !== "preconfirmed" &&
             v.virtualStatus.batchTxID === spentBy
         ) {
             return true;
@@ -71,7 +71,7 @@ function getVtxo(
 export function vtxosToTxs(
     spendable: VirtualCoin[],
     spent: VirtualCoin[],
-    boardingRounds: Set<string>
+    boardingBatchTxids: Set<string>
 ): ArkTransaction[] {
     const txs: ArkTransaction[] = [];
 
@@ -82,8 +82,8 @@ export function vtxosToTxs(
     let vtxosLeftToCheck = [...spent];
     for (const vtxo of [...spendable, ...spent]) {
         if (
-            vtxo.virtualStatus.state !== "pending" &&
-            boardingRounds.has(vtxo.virtualStatus.batchTxID || "")
+            vtxo.virtualStatus.state !== "preconfirmed" &&
+            boardingBatchTxids.has(vtxo.virtualStatus.batchTxID || "")
         ) {
             continue;
         }
@@ -103,13 +103,13 @@ export function vtxosToTxs(
         }
 
         const txKey: TxKey = {
-            roundTxid: vtxo.virtualStatus.batchTxID || "",
+            commitmentTxid: vtxo.virtualStatus.batchTxID || "",
             boardingTxid: "",
-            redeemTxid: "",
+            arkTxid: "",
         };
-        let settled = vtxo.virtualStatus.state !== "pending";
-        if (vtxo.virtualStatus.state === "pending") {
-            txKey.redeemTxid = vtxo.txid;
+        let settled = vtxo.virtualStatus.state !== "preconfirmed";
+        if (vtxo.virtualStatus.state === "preconfirmed") {
+            txKey.arkTxid = vtxo.txid;
 
             if (vtxo.spentBy) {
                 settled = true;
@@ -155,12 +155,12 @@ export function vtxosToTxs(
         const vtxo = getVtxo(resultedVtxos, vtxos);
 
         const txKey: TxKey = {
-            roundTxid: vtxo.virtualStatus.batchTxID || "",
+            commitmentTxid: vtxo.virtualStatus.batchTxID || "",
             boardingTxid: "",
-            redeemTxid: "",
+            arkTxid: "",
         };
-        if (vtxo.virtualStatus.state === "pending") {
-            txKey.redeemTxid = vtxo.txid;
+        if (vtxo.virtualStatus.state === "preconfirmed") {
+            txKey.arkTxid = vtxo.txid;
         }
 
         txs.push({

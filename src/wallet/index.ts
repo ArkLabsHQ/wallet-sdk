@@ -82,7 +82,7 @@ export interface Status {
 }
 
 export interface VirtualStatus {
-    state: "pending" | "settled" | "swept" | "spent";
+    state: "preconfirmed" | "settled" | "swept" | "spent";
     batchTxID?: string;
     batchExpiry?: number;
 }
@@ -110,8 +110,8 @@ export enum TxType {
 
 export interface TxKey {
     boardingTxid: string;
-    roundTxid: string;
-    redeemTxid: string;
+    commitmentTxid: string;
+    arkTxid: string;
 }
 
 export interface ArkTransaction {

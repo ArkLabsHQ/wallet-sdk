@@ -288,7 +288,7 @@ export class Wallet implements IWallet {
                 .filter((coin) => coin.virtualStatus.state === "settled")
                 .reduce((sum, coin) => sum + coin.value, 0);
             offchainPending = vtxos
-                .filter((coin) => coin.virtualStatus.state === "pending")
+                .filter((coin) => coin.virtualStatus.state === "preconfirmed")
                 .reduce((sum, coin) => sum + coin.value, 0);
             offchainSwept = vtxos
                 .filter(
@@ -384,7 +384,8 @@ export class Wallet implements IWallet {
             addresses: [this.offchainAddress.encode()],
         });
 
-        const { boardingTxs, roundsToIgnore } = await this.getBoardingTxs();
+        const { boardingTxs, commitmentsToIgnore } =
+            await this.getBoardingTxs();
 
         const spendableVtxos = [];
         const spentVtxos = [];
@@ -401,7 +402,7 @@ export class Wallet implements IWallet {
         const offchainTxs = vtxosToTxs(
             spendableVtxos,
             spentVtxos,
-            roundsToIgnore
+            commitmentsToIgnore
         );
 
         const txs = [...boardingTxs, ...offchainTxs];
@@ -421,16 +422,16 @@ export class Wallet implements IWallet {
 
     async getBoardingTxs(): Promise<{
         boardingTxs: ArkTransaction[];
-        roundsToIgnore: Set<string>;
+        commitmentsToIgnore: Set<string>;
     }> {
         if (!this.boardingAddress) {
-            return { boardingTxs: [], roundsToIgnore: new Set() };
+            return { boardingTxs: [], commitmentsToIgnore: new Set() };
         }
 
         const boardingAddress = this.boardingOnchainAddress;
         const txs = await this.onchainProvider.getTransactions(boardingAddress);
         const utxos: VirtualCoin[] = [];
-        const roundsToIgnore = new Set<string>();
+        const commitmentsToIgnore = new Set<string>();
 
         for (const tx of txs) {
             for (let i = 0; i < tx.vout.length; i++) {
@@ -441,7 +442,7 @@ export class Wallet implements IWallet {
                     const spentStatus = spentStatuses[i];
 
                     if (spentStatus?.spent) {
-                        roundsToIgnore.add(spentStatus.txid);
+                        commitmentsToIgnore.add(spentStatus.txid);
                     }
 
                     utxos.push({
@@ -453,7 +454,9 @@ export class Wallet implements IWallet {
                             block_time: tx.status.block_time,
                         },
                         virtualStatus: {
-                            state: spentStatus?.spent ? "spent" : "pending",
+                            state: spentStatus?.spent
+                                ? "spent"
+                                : "preconfirmed",
                             batchTxID: spentStatus?.spent
                                 ? spentStatus.txid
                                 : undefined,
@@ -473,8 +476,8 @@ export class Wallet implements IWallet {
             const tx: ArkTransaction = {
                 key: {
                     boardingTxid: utxo.txid,
-                    roundTxid: "",
-                    redeemTxid: "",
+                    commitmentTxid: "",
+                    arkTxid: "",
                 },
                 amount: utxo.value,
                 type: TxType.TxReceived,
@@ -493,7 +496,7 @@ export class Wallet implements IWallet {
 
         return {
             boardingTxs: [...unconfirmedTxs, ...confirmedTxs],
-            roundsToIgnore,
+            commitmentsToIgnore,
         };
     }
 
@@ -988,7 +991,7 @@ export class Wallet implements IWallet {
             throw new Error("No vtxos to exit");
         }
 
-        const trees = new Map<string, TxTree>();
+        // const trees = new Map<string, TxTree>();
         const transactions: string[] = [];
 
         // for (const vtxo of vtxos) {

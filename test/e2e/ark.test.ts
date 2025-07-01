@@ -186,12 +186,12 @@ describe("Wallet SDK Integration Tests", () => {
             // Check virtual coins after funding
             const virtualCoins = await alice.wallet.getVtxos();
 
-            // Verify we have a pending virtual coin
+            // Verify we have a preconfirmed virtual coin
             expect(virtualCoins).toHaveLength(1);
             const vtxo = virtualCoins[0];
             expect(vtxo.txid).toBeDefined();
             expect(vtxo.value).toBe(fundAmount);
-            expect(vtxo.virtualStatus.state).toBe("pending");
+            expect(vtxo.virtualStatus.state).toBe("preconfirmed");
 
             // Check Alice's balance after funding
             const aliceBalanceAfterFunding = await alice.wallet.getBalance();
@@ -300,8 +300,8 @@ describe("Wallet SDK Integration Tests", () => {
         // Check send transaction
         expect(sendTx.type).toBe(TxType.TxSent);
         expect(sendTx.amount).toBe(sendAmount);
-        expect(sendTx.key.redeemTxid.length).toBeGreaterThan(0);
-        expect(sendTx.key.redeemTxid).toBe(sendTxid);
+        expect(sendTx.key.arkTxid.length).toBeGreaterThan(0);
+        expect(sendTx.key.arkTxid).toBe(sendTxid);
 
         // Get transaction history for Bob
         const bobHistory = await bob.wallet.getTransactionHistory();
@@ -313,7 +313,7 @@ describe("Wallet SDK Integration Tests", () => {
         expect(bobsReceiveTx.type).toBe(TxType.TxReceived);
         expect(bobsReceiveTx.amount).toBe(sendAmount);
         expect(bobsReceiveTx.settled).toBe(false);
-        expect(bobsReceiveTx.key.redeemTxid.length).toBeGreaterThan(0);
+        expect(bobsReceiveTx.key.arkTxid.length).toBeGreaterThan(0);
 
         // Bob settles the received VTXO
         let bobInputs = await bob.wallet.getVtxos();

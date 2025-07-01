@@ -569,7 +569,7 @@ function convertVtxo(vtxo: Vtxo): VirtualCoin {
             state: vtxo.isSwept
                 ? "swept"
                 : vtxo.isPreconfirmed
-                  ? "pending"
+                  ? "preconfirmed"
                   : "settled",
             batchTxID: vtxo.commitmentTxid,
             batchExpiry: vtxo.expiresAt
@@ -596,8 +596,8 @@ function convertTransaction(tx: TxHistoryRecord): ArkTransaction {
     return {
         key: {
             boardingTxid: "",
-            roundTxid: tx.commitmentTxid ?? "",
-            redeemTxid: tx.virtualTxid ?? "",
+            commitmentTxid: tx.commitmentTxid ?? "",
+            arkTxid: tx.virtualTxid ?? "",
         },
         amount: Number(tx.amount),
         type: convertType(tx.type),

@@ -1,19 +1,7 @@
 import { TreeNode, TxTree } from "../tree/vtxoTree";
-import { Outpoint, VirtualCoin } from "../wallet";
+import { Outpoint } from "../wallet";
 import { TreeNonces, TreePartialSigs } from "../tree/signingSession";
 import { hex } from "@scure/base";
-
-// Define event types
-export interface ArkEvent {
-    type: "vtxo_created" | "vtxo_spent" | "vtxo_swept" | "vtxo_expired";
-    data: {
-        txid?: string;
-        address?: string;
-        amount?: number;
-        roundTxid?: string;
-        expireAt?: number;
-    };
-}
 
 export type VtxoInput = {
     outpoint: Outpoint;
@@ -571,7 +559,7 @@ export class RestArkProvider implements ArkProvider {
     }
 
     private toConnectorsIndex(
-        connectorsIndex: ProtoTypes.RoundFinalizationEvent["connectorsIndex"]
+        connectorsIndex: ProtoTypes.BatchFinalizationEvent["connectorsIndex"]
     ): Map<string, Outpoint> {
         return new Map(
             Object.entries(connectorsIndex).map(([key, value]) => [
@@ -899,12 +887,12 @@ namespace ProtoTypes {
         forfeitAddress: string;
     }
 
-    interface RoundFailed {
+    interface BatchFailed {
         id: string;
         reason: string;
     }
 
-    export interface RoundFinalizationEvent {
+    export interface BatchFinalizationEvent {
         id: string;
         commitmentTx: string;
         connectorsIndex: {
@@ -915,18 +903,18 @@ namespace ProtoTypes {
         };
     }
 
-    interface RoundFinalizedEvent {
+    interface BatchFinalizedEvent {
         id: string;
         commitmentTxid: string;
     }
 
-    interface RoundSigningEvent {
+    interface TreeSigningStartedEvent {
         id: string;
         cosignersPubkeys: string[];
         unsignedCommitmentTx: string;
     }
 
-    interface RoundSigningNoncesGeneratedEvent {
+    interface TreeNoncesAggregatedEvent {
         id: string;
         treeNonces: string;
     }
@@ -966,11 +954,11 @@ namespace ProtoTypes {
 
     export interface EventData {
         batchStarted?: BatchStartedEvent;
-        batchFailed?: RoundFailed;
-        batchFinalization?: RoundFinalizationEvent;
-        batchFinalized?: RoundFinalizedEvent;
-        treeSigningStarted?: RoundSigningEvent;
-        treeNoncesAggregated?: RoundSigningNoncesGeneratedEvent;
+        batchFailed?: BatchFailed;
+        batchFinalization?: BatchFinalizationEvent;
+        batchFinalized?: BatchFinalizedEvent;
+        treeSigningStarted?: TreeSigningStartedEvent;
+        treeNoncesAggregated?: TreeNoncesAggregatedEvent;
         treeTx?: BatchTreeEvent;
         treeSignature?: BatchTreeSignatureEvent;
     }

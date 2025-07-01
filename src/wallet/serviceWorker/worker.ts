@@ -2,7 +2,7 @@
 declare const self: ServiceWorkerGlobalScope;
 
 import { InMemoryKey } from "../../identity/inMemoryKey";
-import { isRecoverable, isSpendable, isSubdust, VtxoTaprootAddress } from "..";
+import { isSpendable, VtxoTaprootAddress } from "..";
 import { Wallet } from "../wallet";
 import { Request } from "./request";
 import { Response } from "./response";
@@ -369,7 +369,7 @@ export class Worker {
             );
             const offchainPendingBalance = spendableVtxos.reduce(
                 (sum, vtxo) =>
-                    vtxo.virtualStatus.state === "pending"
+                    vtxo.virtualStatus.state === "preconfirmed"
                         ? sum + vtxo.value
                         : sum,
                 0
@@ -540,7 +540,7 @@ export class Worker {
         }
 
         try {
-            const { boardingTxs, roundsToIgnore } =
+            const { boardingTxs, commitmentsToIgnore: roundsToIgnore } =
                 await this.wallet.getBoardingTxs();
 
             const { spendable, spent } =
