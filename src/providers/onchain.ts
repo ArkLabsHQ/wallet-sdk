@@ -13,13 +13,43 @@ export type ExplorerTransaction = {
     txid: string;
     vout: {
         scriptpubkey_address: string;
-        value: bigint;
+        value: string;
     }[];
     status: {
         confirmed: boolean;
         block_time: number;
     };
 };
+
+const isExplorerTransaction = (tx: any): tx is ExplorerTransaction => {
+    return (
+        typeof tx.txid === "string" &&
+        Array.isArray(tx.vout) &&
+        tx.vout.every(
+            (vout: any) =>
+                typeof vout.scriptpubkey_address === "string" &&
+                typeof vout.value === "string"
+        ) &&
+        typeof tx.status === "object" &&
+        typeof tx.status.confirmed === "boolean" &&
+        typeof tx.status.block_time === "number"
+    );
+};
+
+export interface SubscribeMessage {
+    "track-addresses": string[];
+}
+
+export interface WebSocketMessage {
+    "multi-address-transactions"?: Record<
+        string,
+        {
+            mempool: ExplorerTransaction[];
+            confirmed: ExplorerTransaction[];
+            removed: ExplorerTransaction[];
+        }
+    >;
+}
 
 export interface OnchainProvider {
     getCoins(address: string): Promise<Coin[]>;
@@ -32,6 +62,13 @@ export interface OnchainProvider {
         blockTime?: number;
         blockHeight?: number;
     }>;
+    watchAddresses(
+        addresses: string[],
+        eventCallback: (
+            txs: ExplorerTransaction[],
+            stopFunc: () => void
+        ) => void
+    ): Promise<WebSocket>;
 }
 
 export class EsploraProvider implements OnchainProvider {
@@ -111,5 +148,102 @@ export class EsploraProvider implements OnchainProvider {
             blockTime: data.block_time,
             blockHeight: data.block_height,
         };
+    }
+
+    async watchAddresses(
+        addresses: string[],
+        callback: (txs: ExplorerTransaction[], stopFunc: () => void) => void
+    ): Promise<WebSocket> {
+        // returns WebSocket instance for testing
+        const wsUrl =
+            this.baseUrl.replace(/^http(s)?:\/\//, "ws$1://") + "/v1/ws";
+        const ws = new WebSocket(wsUrl);
+
+        ws.addEventListener("open", () => {
+            // subscribe to address updates
+            const subscribeMsg: SubscribeMessage = {
+                "track-addresses": addresses,
+            };
+            ws.send(JSON.stringify(subscribeMsg));
+        });
+
+        ws.addEventListener("message", (event: MessageEvent) => {
+            try {
+                const newTxs: ExplorerTransaction[] = [];
+                const message: WebSocketMessage = JSON.parse(
+                    event.data.toString()
+                );
+                if (!message["multi-address-transactions"]) return;
+                const aux = message["multi-address-transactions"];
+
+                for (const address in aux) {
+                    for (const type of [
+                        "mempool",
+                        "confirmed",
+                        "removed",
+                    ] as const) {
+                        if (!aux[address][type]) continue;
+                        newTxs.push(
+                            ...aux[address][type].filter(isExplorerTransaction)
+                        );
+                    }
+                }
+                // callback with new transactions
+                if (newTxs.length > 0) callback(newTxs, ws.close.bind(ws));
+            } catch (error) {
+                console.error("Failed to process WebSocket message:", error);
+            }
+        });
+
+        ws.addEventListener("error", async () => {
+            // websocket is not reliable, so we will fallback to polling
+            const pollingInterval = 5_000; // 5 seconds
+
+            const getAllTxs = () => {
+                return Promise.all(
+                    addresses.map((address) => this.getTransactions(address))
+                ).then((txArrays) => txArrays.flat());
+            };
+
+            // initial fetch to get existing transactions
+            const initialTxs = await getAllTxs();
+
+            // we use block_time in key to also notify when a transaction is confirmed
+            const txKey = (tx: ExplorerTransaction) =>
+                `${tx.txid}_${tx.status.block_time}`;
+
+            // polling for new transactions
+            const intervalId = setInterval(async () => {
+                try {
+                    // get current transactions
+                    // we will compare with initialTxs to find new ones
+                    const currentTxs = await getAllTxs();
+
+                    // if current transactions differ from initial, we have new transactions
+                    if (
+                        JSON.stringify(currentTxs) !==
+                        JSON.stringify(initialTxs)
+                    ) {
+                        // create a set of existing transactions to avoid duplicates
+                        const existingTxs = new Set(initialTxs.map(txKey));
+
+                        // filter out transactions that are already in initialTxs
+                        const newTxs = currentTxs.filter(
+                            (tx) => !existingTxs.has(txKey(tx))
+                        );
+
+                        if (newTxs.length > 0) {
+                            initialTxs.push(...newTxs);
+                            const stopFunc = () => clearInterval(intervalId);
+                            callback(newTxs, stopFunc);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error in polling mechanism:", error);
+                }
+            }, pollingInterval);
+        });
+
+        return ws;
     }
 }

@@ -61,9 +61,9 @@
     "bip68": "1.0.4"
   },
   "devDependencies": {
-    "rimraf": "^5.0.0",
     "@eslint/js": "^9.17.0",
     "@types/node": "22.10.2",
+    "@types/ws": "8.18.1",
     "@typescript-eslint/eslint-plugin": "8.18.2",
     "@typescript-eslint/parser": "8.18.2",
     "@vitest/coverage-v8": "2.1.9",
@@ -73,8 +73,10 @@
     "husky": "9.1.7",
     "lint-staged": "15.3.0",
     "prettier": "3.4.2",
+    "rimraf": "^5.0.0",
     "typescript": "5.7.2",
-    "vitest": "2.1.9"
+    "vitest": "2.1.9",
+    "ws": "8.18.3"
   },
   "keywords": [
     "bitcoin",

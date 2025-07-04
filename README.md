@@ -24,12 +24,25 @@ const wallet = await Wallet.create({
   esploraUrl: 'https://mutinynet.com/api', 
   arkServerUrl: 'https://mutinynet.arkade.sh',
 })
+```
 
+### Receiving Bitcoin
+
+```typescript
 // Get wallet addresses
 const arkAddress = await wallet.getAddress()
 const boardingAddress = await wallet.getBoardingAddress()
 console.log('Ark Address:', arkAddress)
 console.log('Boarding Address:', boardingAddress)
+
+// be notified when incoming funds
+wallet.notifyIncomingFunds((coins) => {
+  const amount = coins.reduce((sum, a) => sum + a.value)
+  console.log('received ${coins.length} coins totalling ${amount} sats')
+})
+
+// or block and wait for incoming funds
+const coins = await waitForIncomingFunds(wallet)
 ```
 
 ### Sending Bitcoin
@@ -206,6 +219,14 @@ interface IWallet {
 
   /** Get transaction history */
   getTransactionHistory(): Promise<ArkTransaction[]>;
+
+  /** Be notified via callback */
+  notifyIncomingFunds(
+    eventCallback: (
+      coins: Coin[] | VirtualCoin[],
+      stopFunc: () => void
+    ) => void
+  ): Promise<void>;
 
   /** Exit vtxos unilaterally */
   exit(outpoints?: Outpoint[]): Promise<void>;

@@ -71,6 +71,7 @@ import {
     VtxoChain,
     Tx,
 } from "./providers/indexer";
+import { waitForIncomingFunds } from "./utils/waitForIncomingFunds";
 
 export {
     // Classes
@@ -121,6 +122,7 @@ export {
     VtxoTaprootTree,
     ConditionWitness,
     buildOffchainTx,
+    waitForIncomingFunds,
 
     // Arknote
     ArkNote,

@@ -1,5 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EsploraProvider, Coin } from "../src";
+import {
+    ExplorerTransaction,
+    SubscribeMessage,
+    WebSocketMessage,
+} from "../src/providers/onchain";
+
+// Mock WebSocket
+class MockWebSocket {
+    url: string;
+    listeners: Map<string, (event: any) => void> = new Map();
+    send = vi.fn();
+    close = vi.fn();
+
+    constructor(url: string) {
+        this.url = url;
+    }
+
+    addEventListener(event: string, callback: (event: any) => void) {
+        this.listeners.set(event, callback);
+    }
+
+    // Simulate WebSocket events
+    simulateEvent(event: string, data: any) {
+        const callback = this.listeners.get(event);
+        if (callback) callback(data);
+    }
+}
+
+// Define a type for the mock to satisfy TypeScript
+type MockWebSocketInstance = InstanceType<typeof MockWebSocket>;
+
 // Mock fetch
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -126,6 +157,159 @@ describe("EsploraProvider", () => {
             ).rejects.toThrow(
                 "Failed to broadcast transaction: Invalid transaction"
             );
+        });
+    });
+
+    describe("watchAddresses", () => {
+        const callback = vi.fn();
+        let provider: EsploraProvider;
+        const baseUrl = "http://localhost:3000";
+        const wsUrl = "ws://localhost:3000/v1/ws";
+        const addresses = ["addr1", "addr2"];
+        const transactions: ExplorerTransaction[] = [
+            {
+                txid: "tx1",
+                vout: [{ scriptpubkey_address: addresses[0], value: "1000" }],
+                status: { confirmed: false, block_time: 123 },
+            },
+            {
+                txid: "tx2",
+                vout: [{ scriptpubkey_address: addresses[1], value: "2000" }],
+                status: { confirmed: true, block_time: 124 },
+            },
+        ];
+
+        beforeEach(() => {
+            provider = new EsploraProvider(baseUrl);
+            vi.spyOn(provider, "getTransactions").mockImplementation(
+                async () => []
+            );
+            vi.stubGlobal("WebSocket", MockWebSocket);
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+            vi.unstubAllGlobals();
+            vi.useRealTimers();
+        });
+
+        it("connects to the correct WebSocket URL", async () => {
+            // arrange
+            const conn = (await provider.watchAddresses(
+                addresses,
+                callback
+            )) as unknown as MockWebSocketInstance;
+
+            // assert
+            expect(conn.url).toBe(wsUrl);
+            expect(conn.close).toBeDefined();
+            expect(callback).not.toHaveBeenCalled();
+        });
+
+        it("sends subscription message on WebSocket open", async () => {
+            // arrange
+            const conn = (await provider.watchAddresses(
+                addresses,
+                callback
+            )) as unknown as MockWebSocketInstance;
+
+            // act
+            conn.simulateEvent("open", {});
+
+            // assert
+            const expectedMsg: SubscribeMessage = {
+                "track-addresses": addresses,
+            };
+            expect(conn.send).toHaveBeenCalledWith(JSON.stringify(expectedMsg));
+            expect(callback).not.toHaveBeenCalled();
+        });
+
+        it("processes valid WebSocket message and calls callback with transactions", async () => {
+            // arrange
+            const message: WebSocketMessage = {
+                "multi-address-transactions": {
+                    [addresses[0]]: {
+                        mempool: [transactions[0]],
+                        confirmed: [],
+                        removed: [],
+                    },
+                    [addresses[1]]: {
+                        mempool: [],
+                        confirmed: [transactions[1]],
+                        removed: [],
+                    },
+                },
+            };
+
+            const conn = (await provider.watchAddresses(
+                addresses,
+                callback
+            )) as unknown as MockWebSocketInstance;
+
+            // act
+            conn.simulateEvent("message", { data: JSON.stringify(message) });
+
+            // assert
+            expect(callback).toHaveBeenCalledWith(
+                transactions,
+                expect.any(Function)
+            );
+        });
+
+        it("ignores invalid WebSocket messages", async () => {
+            // arrange
+            const conn = (await provider.watchAddresses(
+                addresses,
+                callback
+            )) as unknown as MockWebSocketInstance;
+
+            // act
+            conn.simulateEvent("message", { data: "invalid json" });
+
+            // assert
+            expect(callback).not.toHaveBeenCalled();
+        });
+
+        it("ignores messages without multi-address-transactions", async () => {
+            // assert
+            const conn = (await provider.watchAddresses(
+                addresses,
+                callback
+            )) as unknown as MockWebSocketInstance;
+
+            // act
+            conn.simulateEvent("message", { data: JSON.stringify({}) });
+
+            // assert
+            expect(callback).not.toHaveBeenCalled();
+        });
+
+        it("falls back to polling on WebSocket error", async () => {
+            const initialTxs: ExplorerTransaction[] = [transactions[0]];
+            const newTxs: ExplorerTransaction[] = [transactions[1]];
+
+            vi.spyOn(provider, "getTransactions")
+                .mockResolvedValueOnce(initialTxs) // initial fetch for addr1
+                .mockResolvedValueOnce([]) // initial fetch for addr2
+                .mockResolvedValueOnce([...initialTxs, ...newTxs]) // polling fetch for addr1
+                .mockResolvedValueOnce([]); // polling fetch for addr2
+
+            const conn = (await provider.watchAddresses(
+                addresses,
+                callback
+            )) as unknown as MockWebSocketInstance;
+
+            // act
+            conn.simulateEvent("error", {});
+
+            // assert
+            expect(provider.getTransactions).toHaveBeenCalledTimes(2); // once per address
+            expect(callback).not.toHaveBeenCalled();
+
+            // Simulate polling after 5 seconds
+            await vi.advanceTimersByTimeAsync(5000);
+            expect(callback).toHaveBeenCalledWith(newTxs, expect.any(Function));
         });
     });
 });

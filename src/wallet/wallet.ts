@@ -37,6 +37,7 @@ import {
 import { Identity } from "../identity";
 import {
     ArkTransaction,
+    Coin,
     ExtendedCoin,
     ExtendedVirtualCoin,
     GetVtxosFilter,
@@ -805,6 +806,72 @@ export class Wallet implements IWallet {
             if (broadcastedTxs.has(tx)) continue;
             const txid = await this.onchainProvider.broadcastTransaction(tx);
             broadcastedTxs.set(txid, true);
+        }
+    }
+
+    async notifyIncomingFunds(
+        eventCallback: (
+            coins: Coin[] | VirtualCoin[],
+            stopFunc: () => void
+        ) => void
+    ): Promise<void> {
+        const arkAddress = await this.getAddress();
+        const boardingAddress = await this.getBoardingAddress();
+
+        if (this.onchainProvider && boardingAddress) {
+            this.onchainProvider.watchAddresses(
+                [boardingAddress],
+                (txs, stopFunc) => {
+                    const coins: Coin[] = txs
+                        .map((tx) => {
+                            const vout = tx.vout.findIndex(
+                                (v) =>
+                                    v.scriptpubkey_address === boardingAddress
+                            );
+
+                            if (vout === -1) {
+                                console.warn(
+                                    `No vout found for address ${boardingAddress} in transaction ${tx.txid}`
+                                );
+                                return null;
+                            }
+
+                            return {
+                                txid: tx.txid,
+                                vout,
+                                value: Number(tx.vout[vout].value),
+                                status: tx.status,
+                            };
+                        })
+                        .filter((coin) => coin !== null);
+                    eventCallback(coins, stopFunc);
+                }
+            );
+        }
+
+        if (this.indexerProvider && arkAddress) {
+            const offchainScript = this.offchainTapscript;
+
+            const subscriptionId =
+                await this.indexerProvider.subscribeForScripts([
+                    hex.encode(offchainScript.pkScript),
+                ]);
+
+            const subscription = this.indexerProvider.getSubscription(
+                subscriptionId,
+                new AbortController().signal
+            );
+
+            const stopFunc = async () =>
+                await this.indexerProvider?.unsubscribeForScripts(
+                    subscriptionId
+                );
+
+            for await (const update of subscription) {
+                if (update.newVtxos?.length > 0) {
+                    eventCallback(update.newVtxos, stopFunc);
+                }
+            }
         }
     }
 
